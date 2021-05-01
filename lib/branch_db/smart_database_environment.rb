@@ -16,13 +16,22 @@ module BranchDb
       @host ||= config_env.dig('database', 'host').presence || 'localhost'
     end
 
-    def current_database_name
-      @current_database_name ||= "#{config['database_name_prefix']}_#{Rails.env}_#{normalize_to_database_name(current_branch)}"
+    def current_database_name(current_branch = nil)
+      @current_database_name ||= branch_database_name(current_branch)
     end
     alias_method :database_name, :current_database_name
 
     def base_database_name(base_branch)
-      @base_database_name ||= "#{config['database_name_prefix']}_#{Rails.env}_#{normalize_to_database_name(base_branch)}"
+      @base_database_name ||= branch_database_name(base_branch)
+    end
+
+    def branch_database_name(branch)
+      return if branch&.strip.blank?
+      "#{database_name_prefix}_#{Rails.env}_#{normalize_to_database_name(branch)}"
+    end
+
+    def database_name_prefix
+      (config['database_name_prefix'] || %x[basename -s .git `git config --get remote.origin.url`])&.strip
     end
 
     def current_branch
@@ -49,6 +58,10 @@ module BranchDb
 
     def git_diffs_count(base_branch)
       %x[git diff --cached #{base_branch} --name-only -- #{Rails.root}/db | wc -l].strip&.to_i || 0
+    end
+
+    def git_all_branches
+      %x[git for-each-ref --format='%(refname:short)' refs/heads].strip.split
     end
   end
 end
