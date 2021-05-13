@@ -41,24 +41,55 @@ namespace :branchdb do
   end
 
   desc '현재 브랜치DB를 삭제합니다'
-  task 'drop' => :environment do
+  task 'drop', [:target_branch] => :environment do |_, args|
     database_environment = BranchDb::SmartDatabaseEnvironment.new
-    puts "#{database_environment.current_database_name} 데이터베이스를 삭제하시겠습니까? 삭제하려면 '#{database_environment.current_database_name}'를 입력해 주세요: "
+
+    target_database_name = database_environment.branch_database_name(args[:target_branch])
+    target_database_name = database_environment.current_database_name if target_database_name.blank?
+
+    drop_branch(database_environment, target_database_name)
+  end
+
+  desc '모든 브랜치DB를 표시합니다'
+  task 'prune' => :environment do
+    database_environment = BranchDb::SmartDatabaseEnvironment.new
+
+    git_all_branches = database_environment.git_all_branches
+
+    list_cmd = <<-HEREDOC.squish
+      mysql
+        -u#{database_environment.user_name}
+        -p#{database_environment.password}
+        -e "show databases like '#{database_environment.branch_database_name('%')}'" -N -B
+    HEREDOC
+    puts list_cmd
+
+    %x[#{list_cmd}].split.compact.select do |current_database_name|
+      !git_all_branches.any? do |branche_name|
+        database_environment.branch_database_name(branche_name) == current_database_name
+      end
+    end.each do |target_database_name|
+      drop_branch(database_environment, target_database_name)
+    end
+  end
+
+  def drop_branch(database_environment, target_database_name)
+    puts "#{target_database_name} 데이터베이스를 삭제하시겠습니까? 삭제하려면 '#{target_database_name}'를 입력해 주세요: "
     input = STDIN.gets.chomp
-    raise "삭제를 취소합니다. 입력하신 값은 #{input} 입니다." unless input == database_environment.current_database_name
+    raise "삭제를 취소합니다. 입력하신 값은 #{input} 입니다." unless input == target_database_name
 
     drop_cmd = <<-HEREDOC.squish
       mysql
         -u#{database_environment.user_name}
         -p#{database_environment.password}
-        -e 'drop database `#{database_environment.current_database_name}`'
+        -e 'drop database `#{target_database_name}`'
     HEREDOC
-    created_result = system(drop_cmd)
+    drop_result = system(drop_cmd)
 
-    unless created_result
+    if drop_result
+      puts "DB 삭제했습니다. : #{target_database_name}"
+    else
       puts "DB 삭제에 실패했습니다. : #{$CHILD_STATUS}"
-      next
     end
-    puts "DB 삭제했습니다. : #{database_environment.current_database_name}"
   end
 end
