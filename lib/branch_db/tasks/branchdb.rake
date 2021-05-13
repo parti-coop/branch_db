@@ -28,6 +28,7 @@ namespace :branchdb do
       mysqldump
       -u#{database_environment.user_name}
       -p#{database_environment.password}
+      --max_allowed_packet=512M
       #{database_environment.base_database_name(args[:base_branch])} |
       mysql
       -u#{database_environment.user_name}
