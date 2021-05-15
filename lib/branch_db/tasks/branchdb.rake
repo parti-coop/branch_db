@@ -2,11 +2,15 @@ require_relative '../smart_database_environment'
 
 namespace :branchdb do
   desc "베이스 브랜치 DB를 복사하여 현재 브랜치DB를 만듭니다."
-  task 'create', [:base_branch] => :environment do |_, args|
+  task 'create' do
     database_environment = BranchDb::SmartDatabaseEnvironment.new
-    raise "생성를 취소합니다. base_branch를 입력해 주세요." if args[:base_branch]&.strip.blank?
 
-    puts "#{database_environment.base_database_name(args[:base_branch])}를 #{database_environment.current_database_name}에 복사합니다."
+    puts "#{database_environment.base_database_name}를 #{database_environment.current_database_name}에 복사합니다."
+
+    if database_environment.exists_database?(database_environment.current_database_name)
+      puts "#{database_environment.current_database_name}가 이미 존재합니다."
+      next
+    end
 
     create_cmd = <<-HEREDOC.squish
       mysql
@@ -19,8 +23,7 @@ namespace :branchdb do
     created_result = system(create_cmd)
 
     unless created_result
-      puts "DB 생성에 실패했습니다. : #{$CHILD_STATUS}"
-      next
+      raise "DB 생성에 실패했습니다. : #{$CHILD_STATUS}"
     end
     puts "DB 생성했습니다. : #{database_environment.current_database_name}"
 
@@ -29,10 +32,11 @@ namespace :branchdb do
       -u#{database_environment.user_name}
       -p#{database_environment.password}
       --max_allowed_packet=512M
-      #{database_environment.base_database_name(args[:base_branch])} |
+      #{database_environment.base_database_name} |
       mysql
       -u#{database_environment.user_name}
       -p#{database_environment.password}
+      --max_allowed_packet=512M
       #{database_environment.current_database_name}
     HEREDOC
     puts copy_cmd
@@ -41,17 +45,25 @@ namespace :branchdb do
     puts(copy_result ? "DB를 복사했습니다. : #{$CHILD_STATUS}" : "DB를 복사하지 못했습니다. : #{$CHILD_STATUS}")
   end
 
-  desc '현재 브랜치DB를 삭제합니다'
+  desc '특정 브랜치DB를 삭제합니다'
   task 'drop', [:target_branch] => :environment do |_, args|
     database_environment = BranchDb::SmartDatabaseEnvironment.new
 
-    target_database_name = database_environment.branch_database_name(args[:target_branch])
-    target_database_name = database_environment.current_database_name if target_database_name.blank?
+    target_database_name = if args[:target_branch].blank?
+      database_environment.current_database_name
+    else
+      database_environment.branch_database_name(args[:target_branch])
+    end
+
+    unless database_environment.exists_database?(target_database_name)
+      puts "#{database_environment.current_database_name}가 이미 존재하지 않습니다."
+      next
+    end
 
     drop_branch(database_environment, target_database_name)
   end
 
-  desc '모든 브랜치DB를 표시합니다'
+  desc '모든 브랜치DB를 표시하고 존재하지 않는 브랜치는 삭제합니다'
   task 'prune' => :environment do
     database_environment = BranchDb::SmartDatabaseEnvironment.new
 
@@ -90,7 +102,7 @@ namespace :branchdb do
     if drop_result
       puts "DB 삭제했습니다. : #{target_database_name}"
     else
-      puts "DB 삭제에 실패했습니다. : #{$CHILD_STATUS}"
+      raise "DB 삭제에 실패했습니다. : #{$CHILD_STATUS}"
     end
   end
 end
