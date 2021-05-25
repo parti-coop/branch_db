@@ -1,12 +1,9 @@
 module BranchDb
   class SmartDatabaseEnvironment
-    attr_reader :all_base_branches, :merge_bases_of_all_base_branches
+    attr_reader :all_base_branches
 
     def initialize
       @all_base_branches = all_base_branch
-      @merge_bases_of_all_base_branches = @all_base_branches.permutation(2).map do |a, b|
-        merge_base(a, b)
-      end.compact.uniq
     end
 
     def user_name
@@ -69,15 +66,7 @@ module BranchDb
         return @base_branch
       end
 
-      all_base_branches.each do |current_base_branch|
-        current_merge_base = merge_base(current_base_branch, current_branch)
-        unless merge_bases_of_all_base_branches.include?(current_merge_base)
-          @base_branch = current_base_branch
-          return @base_branch
-        end
-      end
-
-      @base_branch = nil
+      @base_branch = near_base_branch
       @base_branch
     end
 
@@ -112,12 +101,12 @@ module BranchDb
       # 0 < %x[git show-ref refs/heads/#{branch} | wc -l"].strip&.to_i || 0
     end
 
-    def merge_base(a, b)
-      %x[git merge-base #{a} #{b}]&.strip
-    end
-
     def git_all_branches
       %x[git for-each-ref --format='%(refname:short)' refs/heads].strip.split
+    end
+
+    def near_base_branch
+      %x[git show-branch -a 2>/dev/null | grep '\*' | grep -E 'master|production|staging' | grep -v #{current_branch} | head -n1 | sed 's/.*\\[\\(.*\\)\\].*/\\1/' | sed 's/[\\^~].*//']&.strip
     end
   end
 end
