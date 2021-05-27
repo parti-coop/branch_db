@@ -25,8 +25,9 @@ module BranchDb
     def database_name
       return @database_name if @database_name.present?
 
-      if current_database_name == base_database_name || git_changes_count <= 0 || exists_database?(current_database_name)
-        @database_name = current_database_name
+      @database_name = current_database_name
+
+      if current_database_name == base_database_name || git_changes_count > 0 || exists_database?(current_database_name)
         return @database_name
       end
 
