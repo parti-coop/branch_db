@@ -94,7 +94,7 @@ module BranchDb
     end
 
     def exists_database?(database_name)
-      0 < (%x[mysql -uroot -pzmKL4oue/6R4 --skip-column-names --batch -e "SHOW DATABASES LIKE '#{database_name}'" | wc -l].strip&.to_i || 0)
+      0 < (%x[mysql -u#{user_name} -p#{password} -h #{host} --skip-column-names --batch -e "SHOW DATABASES LIKE '#{database_name}'" | wc -l].strip&.to_i || 0)
     end
 
     def all_base_branch
