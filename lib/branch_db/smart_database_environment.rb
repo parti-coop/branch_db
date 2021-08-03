@@ -107,7 +107,7 @@ module BranchDb
     end
 
     def near_base_branch
-      %x[git show-branch -a 2>/dev/null | grep '\*' | grep -E 'master|production|staging' | grep -v #{current_branch} | head -n1 | sed 's/.*\\[\\(.*\\)\\].*/\\1/' | sed 's/[\\^~].*//']&.strip
+      %x[git show-branch -a 2>/dev/null | grep '\*' | grep -v '/' | head -n1 | sed 's/.*\[\(.*\)\].*/\1/' | sed 's/[\^~].*//']&.strip
     end
   end
 end
