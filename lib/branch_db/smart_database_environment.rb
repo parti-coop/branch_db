@@ -19,21 +19,17 @@ module BranchDb
     def database_name
       return @database_name if @database_name.present?
 
-      @database_name = current_database_name
+      puts "git_changes_count : #{git_changes_count}"
+      puts "git_diffs_count : #{git_diffs_count(base_branch)}"
 
-      if current_database_name == base_database_name || git_changes_count > 0 || exists_database?(current_database_name)
-        puts "git_changes_count : #{git_changes_count}"
-        puts "database_name: #{@database_name}"
+      @database_name = current_database_name
+      if exists_database?(current_database_name) || current_database_name == base_database_name || git_db_modification_count > 0
+        puts "database_name: #{@database_name} (current)"
         return @database_name
       end
 
-      if git_diffs_count(base_branch) <= 0
-        puts "git_diffs_count : #{git_diffs_count(base_branch)}"
-        puts "base_database_name: #{base_database_name}"
-        @database_name = base_database_name
-      end
-
-      puts "database_name: #{@database_name}"
+      @database_name = base_database_name
+      puts "database_name: #{@database_name} (base)"
       @database_name
     end
 
@@ -62,11 +58,11 @@ module BranchDb
       return @base_branch if @base_branch.present?
 
       if all_base_branches.include?(current_branch)
-        current_branch
+        @base_branch = current_branch
         return @base_branch
       end
 
-      @base_branch = if current_branch.starts_with?('hotfix/') && all_base_branches.include?('production')
+      @base_branch = if current_branch.start_with?('hotfix/') && all_base_branches.include?('production')
         'production'
       elsif all_base_branches.include?('main')
         'main'
@@ -90,6 +86,10 @@ module BranchDb
       @config_env ||= config.dig(Rails.env) || {}
     end
 
+    def git_db_modification_count
+      git_diffs_count(base_branch) + git_changes_count
+    end
+
     def git_changes_count
       %x[git ls-files -mo --exclude-standard -- #{Rails.root}/db | wc -l].strip&.to_i || 0
     end
@@ -99,7 +99,7 @@ module BranchDb
     end
 
     def exists_database?(database_name)
-      0 < (%x[mysql -u#{user_name} -p#{password} -h #{host} --skip-column-names --batch -e "SHOW DATABASES LIKE '#{database_name}'" | wc -l].strip&.to_i || 0)
+      0 < (%x[MYSQL_PWD=#{password} mysql -u#{user_name} -h #{host} --skip-column-names --batch -e "SHOW DATABASES LIKE '#{database_name}'" | wc -l].strip&.to_i || 0)
     end
 
     def all_base_branches

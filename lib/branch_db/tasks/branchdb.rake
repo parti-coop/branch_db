@@ -5,7 +5,11 @@ namespace :branchdb do
   task 'create' do
     database_environment = BranchDb::SmartDatabaseEnvironment.new
 
-    puts "#{database_environment.base_database_name}를 #{database_environment.current_database_name}에 복사합니다."
+    if database_environment.base_database_name == database_environment.current_database_name
+      puts "기본 데이터베이스입니다. #{database_environment.current_database_name}를 생성합니다."
+    else
+      puts "#{database_environment.base_database_name}를 #{database_environment.current_database_name}에 복사합니다."
+    end
 
     if database_environment.exists_database?(database_environment.current_database_name)
       puts "#{database_environment.current_database_name}가 이미 존재합니다."
@@ -13,9 +17,9 @@ namespace :branchdb do
     end
 
     create_cmd = <<-HEREDOC.squish
+      MYSQL_PWD=#{database_environment.password}
       mysql
         -u#{database_environment.user_name}
-        -p#{database_environment.password}
         -e 'create database `#{database_environment.current_database_name}`
         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
     HEREDOC
@@ -27,15 +31,17 @@ namespace :branchdb do
     end
     puts "DB 생성했습니다. : #{database_environment.current_database_name}"
 
+    next if database_environment.base_database_name == database_environment.current_database_name
+
     copy_cmd = <<-HEREDOC.squish
+      MYSQL_PWD=#{database_environment.password}
       mysqldump
       -u#{database_environment.user_name}
-      -p#{database_environment.password}
       --max_allowed_packet=512M
       #{database_environment.base_database_name} |
+      MYSQL_PWD=#{database_environment.password}
       mysql
       -u#{database_environment.user_name}
-      -p#{database_environment.password}
       --max_allowed_packet=512M
       #{database_environment.current_database_name}
     HEREDOC
@@ -70,9 +76,9 @@ namespace :branchdb do
     git_all_branches = database_environment.git_all_branches
 
     list_cmd = <<-HEREDOC.squish
+      MYSQL_PWD=#{database_environment.password}
       mysql
         -u#{database_environment.user_name}
-        -p#{database_environment.password}
         -e "show databases like '#{database_environment.branch_database_name('%')}'" -N -B
     HEREDOC
     puts list_cmd
@@ -92,9 +98,9 @@ namespace :branchdb do
     raise "삭제를 취소합니다. 입력하신 값은 #{input} 입니다." unless input == target_database_name
 
     drop_cmd = <<-HEREDOC.squish
+      MYSQL_PWD=#{database_environment.password}
       mysql
         -u#{database_environment.user_name}
-        -p#{database_environment.password}
         -e 'drop database `#{target_database_name}`'
     HEREDOC
     drop_result = system(drop_cmd)
