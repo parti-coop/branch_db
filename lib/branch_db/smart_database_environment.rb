@@ -19,17 +19,22 @@ module BranchDb
     def database_name
       return @database_name if @database_name.present?
 
-      puts "git_changes_count : #{git_changes_count}"
-      puts "git_diffs_count : #{git_diffs_count(base_branch)}"
-
-      @database_name = current_database_name
-      if exists_database?(current_database_name) || current_database_name == base_database_name || git_db_modification_count > 0
-        puts "database_name: #{@database_name} (current)"
-        return @database_name
+      exists_current_database = exists_database?(current_database_name)
+      if !exists_current_database && ARGV.any? { |arg| arg&.start_with?('db:') }
+        raise "현재 브랜치에 맞는 데이터베이스 #{current_database_name}가 필요합니다. rails branchdb:create를 실행해 주세요."
+      end
+      if !exists_current_database && !exists_database?(base_database_name)
+        raise "기본 데이터베이스 #{base_database_name}가 필요합니다. #{base_database_name}를 만들고 실서버에서 데이터를 복사해 주세요."
       end
 
-      @database_name = base_database_name
-      puts "database_name: #{@database_name} (base)"
+      @database_name = if exists_current_database
+        current_database_name
+        puts "database_name: #{@database_name} (current)"
+      else
+        base_database_name
+        puts "database_name: #{@database_name} (base)"
+      end
+
       @database_name
     end
 
@@ -38,7 +43,7 @@ module BranchDb
     end
 
     def base_database_name
-      @base_database_name ||= branch_database_name(base_branch)
+      "#{database_name_prefix}_base"
     end
 
     def branch_database_name(branch)
@@ -56,11 +61,6 @@ module BranchDb
 
     def base_branch
       return @base_branch if @base_branch.present?
-
-      if all_base_branches.include?(current_branch)
-        @base_branch = current_branch
-        return @base_branch
-      end
 
       @base_branch = if current_branch.start_with?('hotfix/') && all_base_branches.include?('production')
         'production'

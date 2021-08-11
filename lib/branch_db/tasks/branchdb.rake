@@ -5,14 +5,15 @@ namespace :branchdb do
   task 'create' do
     database_environment = BranchDb::SmartDatabaseEnvironment.new
 
-    if database_environment.base_database_name == database_environment.current_database_name
-      puts "기본 데이터베이스입니다. #{database_environment.current_database_name}를 생성합니다."
-    else
-      puts "#{database_environment.base_database_name}를 #{database_environment.current_database_name}에 복사합니다."
-    end
+    puts "#{database_environment.base_database_name}를 #{database_environment.current_database_name}에 복사합니다."
 
     if database_environment.exists_database?(database_environment.current_database_name)
       puts "#{database_environment.current_database_name}가 이미 존재합니다."
+      next
+    end
+
+    unless database_environment.exists_database?(database_environment.base_database_name)
+      puts "기본 데이터베이스 #{database_environment.base_database_name}가 필요합니다. #{database_environment.base_database_name}를 만들고 실서버에서 데이터를 복사해 주세요."
       next
     end
 
@@ -48,7 +49,7 @@ namespace :branchdb do
     puts copy_cmd
     copy_result = system(copy_cmd)
 
-    puts(copy_result ? "DB를 복사했습니다. : #{$CHILD_STATUS}" : "DB를 복사하지 못했습니다. : #{$CHILD_STATUS}")
+    puts(copy_result ? "DB를 복사했습니다. : #{$CHILD_STATUS}" : "DB를 복사하지 못했습니다(#{$CHILD_STATUS}). 데이터베이스 #{database_environment.current_database_name}를 삭제해야 합니다. 다음 명령어를 실행하세요. rails branchdb:drop")
   end
 
   desc '특정 브랜치DB를 삭제합니다'
