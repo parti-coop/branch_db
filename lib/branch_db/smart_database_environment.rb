@@ -28,11 +28,11 @@ module BranchDb
       end
 
       @database_name = if exists_current_database
-        current_database_name
         puts "database_name: #{@database_name} (current)"
+        current_database_name
       else
-        base_database_name
         puts "database_name: #{@database_name} (base)"
+        base_database_name
       end
 
       @database_name

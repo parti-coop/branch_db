@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    branch_db (0.0.12)
+    branch_db (0.0.13)
       rails (>= 5.0)
 
 GEM
