@@ -20,7 +20,7 @@ module BranchDb
       return @database_name if @database_name.present?
 
       exists_current_database = exists_database?(current_database_name)
-      if !exists_current_database && ARGV.any? { |arg| arg&.start_with?('db:') }
+      if !exists_current_database && Rake.application.top_level_tasks.any? { |arg| arg&.start_with?('db:') }
         raise "현재 브랜치에 맞는 데이터베이스 #{current_database_name}가 필요합니다. rails branchdb:create를 실행해 주세요."
       end
       if !exists_current_database && !exists_database?(base_database_name)
@@ -28,10 +28,10 @@ module BranchDb
       end
 
       @database_name = if exists_current_database
-        puts "database_name: #{@database_name} (current)"
+        puts "database_name: #{current_database_name} (current)"
         current_database_name
       else
-        puts "database_name: #{@database_name} (base)"
+        puts "database_name: #{base_database_name} (base)"
         base_database_name
       end
 
