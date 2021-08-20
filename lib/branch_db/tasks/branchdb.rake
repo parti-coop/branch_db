@@ -20,6 +20,7 @@ namespace :branchdb do
     create_cmd = <<-HEREDOC.squish
       MYSQL_PWD=#{database_environment.password}
       mysql
+        -h#{database_environment.host}
         -u#{database_environment.user_name}
         -e 'create database `#{database_environment.current_database_name}`
         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
@@ -37,11 +38,13 @@ namespace :branchdb do
     copy_cmd = <<-HEREDOC.squish
       MYSQL_PWD=#{database_environment.password}
       mysqldump
+      -h#{database_environment.host}
       -u#{database_environment.user_name}
       --max_allowed_packet=512M
       #{database_environment.base_database_name} |
       MYSQL_PWD=#{database_environment.password}
       mysql
+      -h#{database_environment.host}
       -u#{database_environment.user_name}
       --max_allowed_packet=512M
       #{database_environment.current_database_name}
@@ -79,6 +82,7 @@ namespace :branchdb do
     list_cmd = <<-HEREDOC.squish
       MYSQL_PWD=#{database_environment.password}
       mysql
+        -h#{database_environment.host}
         -u#{database_environment.user_name}
         -e "show databases like '#{database_environment.branch_database_name('%')}'" -N -B
     HEREDOC
@@ -101,6 +105,7 @@ namespace :branchdb do
     drop_cmd = <<-HEREDOC.squish
       MYSQL_PWD=#{database_environment.password}
       mysql
+        -h#{database_environment.host}
         -u#{database_environment.user_name}
         -e 'drop database `#{target_database_name}`'
     HEREDOC
